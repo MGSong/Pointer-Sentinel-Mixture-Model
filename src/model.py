@@ -4,15 +4,16 @@ import torch.nn.functional as F
 from torch.autograd import *
 
 class PSMM(nn.Module):
-    def __init__(self, batch_size, vocab_size, hidden_size):
+    def __init__(self, batch_size, vocab_size, hidden_size, use_cuda):
         super(PSMM, self).__init__()
         self.batch_size = batch_size
         self.vocab_size = vocab_size
-        self.use_cuda = False
+        self.use_cuda = use_cuda
         self.hidden_size = hidden_size
         self.embed = nn.Embedding(vocab_size, hidden_size)
         self.affine1 = nn.Linear(hidden_size, vocab_size)
         self.affine2 = nn.Linear(hidden_size, hidden_size)
+        self.drop = nn.Dropout(0.5)
         self.rnn = nn.LSTMCell(hidden_size, hidden_size)
         self.sentinel_vector = Variable(torch.rand(hidden_size, 1), requires_grad=True)
 
@@ -37,19 +38,19 @@ class PSMM(nn.Module):
 
         for step in range(length):
             embed = self.embed(Variable(input[step]))
-            hidden, cell = self.rnn(embed, (hidden, cell))
+            hidden, cell = self.rnn(self.drop(embed), (self.drop(hidden), cell))
             hiddens.append(hidden)
-            query = F.tanh(self.affine2(hidden))
+            query = F.tanh(self.drop(self.affine2(hidden)))
             z = []
             for j in range(step + 1):
-                z.append(torch.sum(hiddens[j] * query, 1).view(-1))
+                z.append(torch.sum(self.drop(hiddens[j]) * query, 1).view(-1))
             z.append(torch.mm(query, self.sentinel_vector).view(-1))
             z = torch.stack(z)
             a = F.softmax(z.transpose(0, 1)).transpose(0, 1)
             prefix_matrix = cumulate_matrix[:step + 1]
             p_ptr = torch.sum(Variable(prefix_matrix) * a[:-1].unsqueeze(2).expand_as(prefix_matrix), 0).squeeze(0)
 
-            output = self.affine1(hidden)
+            output = self.drop(self.affine1(hidden))
             p_vocab = F.softmax(output)
             p = p_ptr + p_vocab * a[-1].unsqueeze(1).expand_as(p_vocab)
             probs.append(p)

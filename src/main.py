@@ -23,13 +23,19 @@ train_batch = Batchify(c.train, args.batch_size)
 valid_batch = Batchify(c.valid, args.batch_size)
 test_batch = Batchify(c.test, args.batch_size)
 model = PSMM(args.batch_size, len(c.dict), args.hidden, args.cuda)
+if args.cuda:
+    model = model.cuda()
 
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
 for epoch in range(args.epochs):
     model.train()
     for idx, (data, label) in enumerate(train_batch, 1):
         result = model(data)
-        loss = F.nll_loss(result, Variable(label.view(-1)))
+        label = Variable(label.view(-1))
+        if args.cuda:
+            label = label.cuda()
+
+        loss = F.nll_loss(result, label)
         ppl = np.exp(loss.data[0])
         optimizer.zero_grad()
         loss.backward()

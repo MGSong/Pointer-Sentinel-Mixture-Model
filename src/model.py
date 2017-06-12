@@ -16,6 +16,8 @@ class PSMM(nn.Module):
         self.drop = nn.Dropout(0.5)
         self.rnn = nn.LSTMCell(hidden_size, hidden_size)
         self.sentinel_vector = Variable(torch.rand(hidden_size, 1), requires_grad=True)
+        if self.use_cuda:
+            self.sentinel_vector = self.sentinel_vector.cuda()
 
     """
         Input size:
@@ -34,7 +36,10 @@ class PSMM(nn.Module):
         length = input.size(0)
 
         cumulate_matrix = torch.zeros((length, self.batch_size, self.vocab_size))
-        cumulate_matrix.scatter_(2, input.unsqueeze(2), 1)
+        cumulate_matrix.scatter_(2, input.unsqueeze(2), 1.0)
+        if self.use_cuda:
+            cumulate_matrix = cumulate_matrix.cuda()
+            input = input.cuda()
 
         for step in range(length):
             embed = self.embed(Variable(input[step]))

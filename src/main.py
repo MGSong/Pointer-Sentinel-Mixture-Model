@@ -6,6 +6,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import *
 from torch.autograd import *
+from tensorboard_logger import configure, log_value
 from preprocess import *
 from batchify import *
 from model import *
@@ -18,6 +19,8 @@ parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--hidden', type=int, default=300)
 args = parser.parse_args()
 
+configure("../runs/psmm", flush_secs=5)
+
 c = Corpus()
 train_batch = Batchify(c.train, args.batch_size)
 valid_batch = Batchify(c.valid, args.batch_size)
@@ -29,6 +32,7 @@ if args.cuda:
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
 for epoch in range(args.epochs):
     model.train()
+    log_ppl = 0
     for idx, (data, label) in enumerate(train_batch, 1):
         result = model(data)
         label = Variable(label.view(-1))
@@ -36,9 +40,41 @@ for epoch in range(args.epochs):
             label = label.cuda()
 
         loss = F.nll_loss(result, label)
+        log_ppl += loss
         ppl = np.exp(loss.data[0])
         optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm(model.parameters(), 0.25)
         optimizer.step()
         print "Epoch {}/{}, batch {}/{}: Perplexity: {}".format(epoch, args.epochs, idx, len(train_batch), ppl)
+
+    log_ppl /= len(train_batch)
+    print "Train perplexity: {}".format(np.exp(log_ppl))
+    log_value('train_ppl', np.exp(log_ppl), epoch)
+
+    model.eval()
+    log_ppl = 0
+    for data, label in valid_batch:
+        result = model(data)
+        label = Variable(label.view(-1))
+        if args.cuda:
+            label = label.cuda()
+
+        log_ppl += F.nll_loss(result, label)
+
+    log_ppl /= len(valid_batch)
+    print "Evaluation perplexity: {}".format(np.exp(log_ppl))
+    log_value('eval_ppl', np.exp(log_ppl), epoch)
+
+model.eval()
+log_ppl = 0
+for data, label in test_batch:
+    result = model(data)
+    label = Variable(label.view(-1))
+    if args.cuda:
+        label = label.cuda()
+
+    log_ppl += F.nll_loss(result, label)
+
+log_ppl /= len(test_batch)
+print "Test perplexity: {}".format(np.exp(log_ppl))

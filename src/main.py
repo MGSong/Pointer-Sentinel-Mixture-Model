@@ -30,6 +30,8 @@ if args.cuda:
     model = model.cuda()
 
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
+min_ppl = 1e9
+
 for epoch in range(args.epochs):
     model.train()
     log_ppl = 0
@@ -49,8 +51,9 @@ for epoch in range(args.epochs):
         print "Epoch {}/{}, batch {}/{}: Perplexity: {}".format(epoch, args.epochs, idx, len(train_batch), ppl)
 
     log_ppl /= len(train_batch)
-    print "Train perplexity: {}".format(np.exp(log_ppl))
-    log_value('train_ppl', np.exp(log_ppl), epoch)
+    ppl = np.exp(log_ppl)
+    print "Train perplexity: {}".format(ppl)
+    log_value('train_ppl', ppl, epoch)
 
     model.eval()
     log_ppl = 0
@@ -63,8 +66,17 @@ for epoch in range(args.epochs):
         log_ppl += F.nll_loss(result, label)
 
     log_ppl /= len(valid_batch)
-    print "Evaluation perplexity: {}".format(np.exp(log_ppl))
-    log_value('eval_ppl', np.exp(log_ppl), epoch)
+    ppl = np.exp(log_ppl)
+    print "Evaluation perplexity: {}".format(ppl)
+    log_value('eval_ppl', ppl, epoch)
+
+    if ppl < min_ppl:
+        min_ppl = ppl
+        with open('../params/model.params', 'wb') as f:
+            torch.save(model, f)
+    else:
+        for param_group in optimizer.param_groups:
+            param_group['lr'] /= 4.0
 
 model.eval()
 log_ppl = 0
@@ -77,4 +89,5 @@ for data, label in test_batch:
     log_ppl += F.nll_loss(result, label)
 
 log_ppl /= len(test_batch)
-print "Test perplexity: {}".format(np.exp(log_ppl))
+ppl = np.exp(log_ppl)
+print "Test perplexity: {}".format(ppl)

@@ -60,7 +60,6 @@ class PSMM(nn.Module):
             p = p_ptr + p_vocab * a[-1].unsqueeze(1).expand_as(p_vocab)
             probs.append(p)
 
-        del hiddens
         return torch.log(torch.cat(probs).view(-1, self.vocab_size))
 
 if __name__ == '__main__':

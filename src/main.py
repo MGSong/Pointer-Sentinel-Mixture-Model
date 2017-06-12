@@ -42,7 +42,7 @@ for epoch in range(args.epochs):
             label = label.cuda()
 
         loss = F.nll_loss(result, label)
-        log_ppl += loss
+        log_ppl += loss.data[0]
         ppl = np.exp(loss.data[0])
         optimizer.zero_grad()
         loss.backward()
@@ -63,7 +63,7 @@ for epoch in range(args.epochs):
         if args.cuda:
             label = label.cuda()
 
-        log_ppl += F.nll_loss(result, label)
+        log_ppl += F.nll_loss(result, label).data[0]
 
     log_ppl /= len(valid_batch)
     ppl = np.exp(log_ppl)
@@ -86,7 +86,7 @@ for data, label in test_batch:
     if args.cuda:
         label = label.cuda()
 
-    log_ppl += F.nll_loss(result, label)
+    log_ppl += F.nll_loss(result, label).data[0]
 
 log_ppl /= len(test_batch)
 ppl = np.exp(log_ppl)

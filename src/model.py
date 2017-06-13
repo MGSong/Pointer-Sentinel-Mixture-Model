@@ -13,7 +13,7 @@ class PSMM(nn.Module):
         self.embed = nn.Embedding(vocab_size, hidden_size)
         self.affine1 = nn.Linear(hidden_size, vocab_size)
         self.affine2 = nn.Linear(hidden_size, hidden_size)
-        self.drop = nn.Dropout(0.5)
+        self.drop = nn.Dropout(0.3)
         self.rnn = nn.LSTMCell(hidden_size, hidden_size)
         self.sentinel_vector = Variable(torch.rand(hidden_size, 1), requires_grad=True)
         if self.use_cuda:
@@ -43,12 +43,12 @@ class PSMM(nn.Module):
 
         for step in range(length):
             embed = self.embed(Variable(input[step]))
-            hidden, cell = self.rnn(self.drop(embed), (self.drop(hidden), cell))
+            hidden, cell = self.rnn(self.drop(embed), (hidden, cell))
             hiddens.append(hidden)
             query = F.tanh(self.drop(self.affine2(hidden)))
             z = []
             for j in range(step + 1):
-                z.append(torch.sum(self.drop(hiddens[j]) * query, 1).view(-1))
+                z.append(torch.sum(hiddens[j] * query, 1).view(-1))
             z.append(torch.mm(query, self.sentinel_vector).view(-1))
             z = torch.stack(z)
             a = F.softmax(z.transpose(0, 1)).transpose(0, 1)

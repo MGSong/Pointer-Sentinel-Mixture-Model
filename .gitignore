@@ -1,4 +1,6 @@
 LOG
 ERR
+src/debug.py
 *.sh
 *.pyc
+*.params

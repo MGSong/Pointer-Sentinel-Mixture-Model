@@ -65,6 +65,7 @@ class PSMM(nn.Module):
             p_ptr = torch.sum(Variable(prefix_matrix) * a[:-1].unsqueeze(2).expand_as(prefix_matrix), 0).squeeze(0)
             output = self.affine1(hidden)
             p_vocab = F.softmax(output)
+#            print a[-1]
             p = p_ptr + p_vocab * a[-1].unsqueeze(1).expand_as(p_vocab)
             probs.append(p)
 

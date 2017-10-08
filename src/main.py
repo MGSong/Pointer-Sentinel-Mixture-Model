@@ -6,20 +6,20 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import *
 from torch.autograd import *
-from tensorboard_logger import configure, log_value
+import training_monitor.logger as tmlog
 from preprocess import *
 from batchify import *
 from model import *
 
 parser = argparse.ArgumentParser("Pointer Sentinel Mixture Models")
 parser.add_argument('--batch-size', type=int, default=32)
-parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--lr', type=float, default=1)
 parser.add_argument('--cuda', action='store_true')
 parser.add_argument('--epochs', type=int, default=30)
-parser.add_argument('--hidden', type=int, default=300)
+parser.add_argument('--hidden', type=int, default=650)
 args = parser.parse_args()
 
-configure("../runs/psmm", flush_secs=5)
+logger = tmlog.Logger('../runs/psmm_log')
 
 c = Corpus()
 train_batch = Batchify(c.train, args.batch_size)
@@ -29,7 +29,7 @@ model = PSMM(args.batch_size, len(c.dict), args.hidden, args.cuda)
 if args.cuda:
     model = model.cuda()
 
-optimizer = optim.Adam(model.parameters(), lr=args.lr)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-5)
 min_ppl = 1e9
 
 for epoch in range(args.epochs):
@@ -53,7 +53,7 @@ for epoch in range(args.epochs):
     log_ppl /= len(train_batch)
     ppl = np.exp(log_ppl)
     print "Train perplexity: {}".format(ppl)
-    log_value('train_ppl', ppl, epoch)
+    logger.add_scalar('train_ppl', ppl, epoch)
 
     model.eval()
     log_ppl = 0
@@ -68,7 +68,7 @@ for epoch in range(args.epochs):
     log_ppl /= len(valid_batch)
     ppl = np.exp(log_ppl)
     print "Evaluation perplexity: {}".format(ppl)
-    log_value('eval_ppl', ppl, epoch)
+    logger.add_scalar('eval_ppl', ppl, epoch)
 
     if ppl < min_ppl:
         min_ppl = ppl
@@ -91,3 +91,4 @@ for data, label in test_batch:
 log_ppl /= len(test_batch)
 ppl = np.exp(log_ppl)
 print "Test perplexity: {}".format(ppl)
+

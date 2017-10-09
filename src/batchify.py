@@ -1,12 +1,10 @@
-import random
-
 import torch
 
 class Batchify(object):
     def __init__(self, seqs, bts):
         self.seqs = seqs
         self.bts = bts
-        self.reset()
+        self.__cnt = 0
 
     def __iter__(self):
         return self
@@ -14,14 +12,10 @@ class Batchify(object):
     def next(self):
         self.__cnt += 1
         if self.__cnt > self.__len__():
-            self.reset()
             raise StopIteration
-        batch = torch.LongTensor(self.seqs[(self.__cnt - 1) * self.bts: self.__cnt * self.bts]).transpose(0, 1).contiguous()
+        current_batch = [self.seqs[self.__cnt + i * self.__len__()] for i in range(self.bts)]
+        batch = torch.LongTensor(current_batch).transpose(0, 1).contiguous()
         return batch[:-1], batch[1:]
 
     def __len__(self):
         return len(self.seqs) // self.bts
-
-    def reset(self):
-        random.shuffle(self.seqs)
-        self.__cnt = 0

@@ -7,3 +7,6 @@ To implement the ICLR 2017 paper: *Pointer Sentinel Mixture Models* in Pytorch.
 - For convenience, I use a large tensor(`length * batch_size * vocab_size`) to compute `p_ptr`. It's a heavy load for GPU and will be removed later.
 - Dropout is not required for this model.
 
+## TODO
+
+- [ ] Truncated BPTT

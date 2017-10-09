@@ -19,7 +19,7 @@ parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--hidden', type=int, default=650)
 args = parser.parse_args()
 
-logger = tmlog.Logger('../runs/psmm_log')
+logger = tmlog.Logger('../runs/psmm')
 
 c = Corpus()
 train_batch = Batchify(c.train, args.batch_size)
@@ -34,6 +34,7 @@ min_ppl = 1e9
 
 for epoch in range(args.epochs):
     model.train()
+    model.reset_hidden()
     log_ppl = 0
     for idx, (data, label) in enumerate(train_batch, 1):
         result = model(data)
@@ -56,6 +57,7 @@ for epoch in range(args.epochs):
     logger.add_scalar('train_ppl', ppl, epoch)
 
     model.eval()
+    model.reset_hidden()
     log_ppl = 0
     for data, label in valid_batch:
         result = model(data)
@@ -73,12 +75,13 @@ for epoch in range(args.epochs):
     if ppl < min_ppl:
         min_ppl = ppl
         with open('../params/model.params', 'wb') as f:
-            torch.save(model, f)
+            torch.save(model, f.state_dict())
     else:
         for param_group in optimizer.param_groups:
             param_group['lr'] /= 4.0
 
 model.eval()
+model.reset_hidden()
 log_ppl = 0
 for data, label in test_batch:
     result = model(data)

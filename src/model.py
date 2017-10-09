@@ -18,6 +18,11 @@ class PSMM(nn.Module):
         if self.use_cuda:
             self.sentinel_vector = self.sentinel_vector.cuda()
         self.init_weight()
+        self.reset_hidden()
+
+    def reset_hidden(self):
+        self.hidden = None
+        self.cell = None
 
     def init_weight(self):
         init_range = 0.1
@@ -35,12 +40,17 @@ class PSMM(nn.Module):
     def forward(self, input):
         probs = []
         hiddens = []
-        hidden, cell = torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0), \
-                       torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0)
-        if self.use_cuda:
-            hidden, cell = Variable(hidden).cuda(), Variable(cell).cuda()
+        
+        if self.hidden is None:
+            hidden, cell = torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0), \
+                           torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0)
+            if self.use_cuda:
+                hidden, cell = Variable(hidden).cuda(), Variable(cell).cuda()
+            else:
+                hidden, cell = Variable(hidden), Variable(cell)
         else:
-            hidden, cell = Variable(hidden), Variable(cell)
+            hidden = self.hidden
+            cell = self.cell
 
         length = input.size(0)
 
@@ -69,6 +79,8 @@ class PSMM(nn.Module):
             p = p_ptr + p_vocab * a[-1].unsqueeze(1).expand_as(p_vocab)
             probs.append(p)
 
+        self.hidden = Variable(hidden.data.new(hidden.size()).copy_(hidden.data))
+        self.cell = Variable(cell.data.new(cell.size()).copy_(cell.data))
         return torch.log(torch.cat(probs).view(-1, self.vocab_size))
 
 if __name__ == '__main__':

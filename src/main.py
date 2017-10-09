@@ -75,7 +75,7 @@ for epoch in range(args.epochs):
     if ppl < min_ppl:
         min_ppl = ppl
         with open('../params/model.params', 'wb') as f:
-            torch.save(model, f.state_dict())
+            torch.save(f, model.state_dict())
     else:
         for param_group in optimizer.param_groups:
             param_group['lr'] /= 4.0

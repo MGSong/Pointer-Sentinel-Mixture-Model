@@ -4,3 +4,4 @@ src/debug.py
 *.sh
 *.pyc
 *.params
+*.json

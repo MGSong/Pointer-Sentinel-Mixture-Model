@@ -37,17 +37,18 @@ for epoch in range(args.epochs):
     model.reset_hidden()
     log_ppl = 0
     for idx, (data, label) in enumerate(train_batch, 1):
-        result = model(data)
+        result, ptr_rst = model(data)
         label = Variable(label.view(-1))
         if args.cuda:
             label = label.cuda()
 
         loss = F.nll_loss(result, label)
+        loss_tot = loss + F.nll_loss(ptr_rst, label)
         log_ppl += loss.data[0]
         ppl = np.exp(loss.data[0])
         optimizer.zero_grad()
-        loss.backward()
-        nn.utils.clip_grad_norm(model.parameters(), 0.25)
+        loss_tot.backward()
+        nn.utils.clip_grad_norm(model.parameters(), 1)
         optimizer.step()
         print "Epoch {}/{}, batch {}/{}: Perplexity: {}".format(epoch, args.epochs, idx, len(train_batch), ppl)
 
@@ -60,7 +61,7 @@ for epoch in range(args.epochs):
     model.reset_hidden()
     log_ppl = 0
     for data, label in valid_batch:
-        result = model(data)
+        result, _ = model(data)
         label = Variable(label.view(-1))
         if args.cuda:
             label = label.cuda()
@@ -75,7 +76,7 @@ for epoch in range(args.epochs):
     if ppl < min_ppl:
         min_ppl = ppl
         with open('../params/model.params', 'wb') as f:
-            torch.save(f, model.state_dict())
+            torch.save(model.state_dict(), f)
     else:
         for param_group in optimizer.param_groups:
             param_group['lr'] /= 4.0
@@ -84,7 +85,7 @@ model.eval()
 model.reset_hidden()
 log_ppl = 0
 for data, label in test_batch:
-    result = model(data)
+    result, _ = model(data)
     label = Variable(label.view(-1))
     if args.cuda:
         label = label.cuda()

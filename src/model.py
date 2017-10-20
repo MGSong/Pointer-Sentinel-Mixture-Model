@@ -41,16 +41,12 @@ class PSMM(nn.Module):
         probs = []
         hiddens = []
         
-        if self.hidden is None:
-            hidden, cell = torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0), \
-                           torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0)
-            if self.use_cuda:
-                hidden, cell = Variable(hidden).cuda(), Variable(cell).cuda()
-            else:
-                hidden, cell = Variable(hidden), Variable(cell)
+        hidden, cell = torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0), \
+                       torch.FloatTensor(self.batch_size, self.hidden_size).fill_(0)
+        if self.use_cuda:
+            hidden, cell = Variable(hidden).cuda(), Variable(cell).cuda()
         else:
-            hidden = self.hidden
-            cell = self.cell
+            hidden, cell = Variable(hidden), Variable(cell)
 
         length = input.size(0)
 
@@ -59,6 +55,8 @@ class PSMM(nn.Module):
         if self.use_cuda:
             cumulate_matrix = cumulate_matrix.cuda()
             input = input.cuda()
+		
+        ptr_scores = []
 
         for step in range(length):
             embed = self.embed(Variable(input[step]))
@@ -75,13 +73,11 @@ class PSMM(nn.Module):
             p_ptr = torch.sum(Variable(prefix_matrix) * a[:-1].unsqueeze(2).expand_as(prefix_matrix), 0).squeeze(0)
             output = self.affine1(hidden)
             p_vocab = F.softmax(output)
-#            print a[-1]
             p = p_ptr + p_vocab * a[-1].unsqueeze(1).expand_as(p_vocab)
             probs.append(p)
+            ptr_scores.append(p_ptr + a[-1].unsqueeze(1))
 
-        self.hidden = Variable(hidden.data.new(hidden.size()).copy_(hidden.data))
-        self.cell = Variable(cell.data.new(cell.size()).copy_(cell.data))
-        return torch.log(torch.cat(probs).view(-1, self.vocab_size))
+        return torch.log(torch.cat(probs).view(-1, self.vocab_size)), torch.log(torch.cat(ptr_scores).view(-1, self.vocab_size))
 
 if __name__ == '__main__':
     pass

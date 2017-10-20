@@ -12,8 +12,9 @@ class Batchify(object):
     def next(self):
         self.__cnt += 1
         if self.__cnt > self.__len__():
+            self.__cnt = 0
             raise StopIteration
-        current_batch = [self.seqs[self.__cnt + i * self.__len__()] for i in range(self.bts)]
+        current_batch = [self.seqs[self.__cnt - 1 + i * self.__len__()] for i in range(self.bts)]
         batch = torch.LongTensor(current_batch).transpose(0, 1).contiguous()
         return batch[:-1], batch[1:]
 
